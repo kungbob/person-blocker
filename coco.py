@@ -39,7 +39,8 @@ import numpy as np
 # Note: Edit PythonAPI/Makefile and replace "python" with "python3".
 # from pycocotools.coco import COCO
 # from pycocotools.cocoeval import COCOeval
-# from pycocotools import mask as maskUtils
+from pycocotools import mask as maskUtils
+from pycocotools.coco import COCO
 
 import zipfile
 import urllib.request
@@ -119,7 +120,12 @@ class CocoDataset(utils.Dataset):
         if class_ids:
             image_ids = []
             for id in class_ids:
-                image_ids.extend(list(coco.getImgIds(catIds=[id])))
+                image_id_list = list(coco.getImgIds(catIds=[id]))
+                for item in image_id_list:
+                    path = os.path.join(image_dir, coco.imgs[item]['file_name'])
+                    if os.path.isfile(path):
+                        image_ids.append(item)
+                
             # Remove duplicates
             image_ids = list(set(image_ids))
         else:
@@ -488,7 +494,7 @@ if __name__ == '__main__':
         print("Training network heads")
         model.train(dataset_train, dataset_val,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=40,
+                    epochs=20,
                     layers='heads')
 
         # Training - Stage 2
@@ -496,7 +502,7 @@ if __name__ == '__main__':
         print("Fine tune Resnet stage 4 and up")
         model.train(dataset_train, dataset_val,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=120,
+                    epochs=60,
                     layers='4+')
 
         # Training - Stage 3
@@ -504,9 +510,10 @@ if __name__ == '__main__':
         print("Fine tune all layers")
         model.train(dataset_train, dataset_val,
                     learning_rate=config.LEARNING_RATE / 10,
-                    epochs=160,
+                    epochs=80,
                     layers='all')
-
+    
+        print("Finish Training!") 
     elif args.command == "evaluate":
         # Validation dataset
         dataset_val = CocoDataset()
